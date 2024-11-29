@@ -1,5 +1,8 @@
 package com.example.se_tasklistapp;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -20,9 +23,11 @@ public final class User extends Application {
         this.username="匿名用户";
         this.task_list=new ArrayList<Task>();
         this.temp_task_list=new ArrayList<Task>();
+        this.close_task_list=new ArrayList<Task>();
+        this.deleted_task_list=new ArrayList<Task>();
         this.categories=new ArrayList<Category>();
         this.reminders=new ArrayList<Notification>();
-        //this.labels=new ArrayList<Label>();
+        this.labels=new ArrayList<Label>();
         this.categories.add(new Category("学习"));
         this.categories.add(new Category("工作"));
         this.categories.add(new Category("生活"));
@@ -31,11 +36,18 @@ public final class User extends Application {
     private String username;
     private List<Task> task_list;
     private List<Task> temp_task_list;
+    private List<Task> close_task_list;
+    private List<Task> deleted_task_list;
     private List<Category> categories;
-    //private List<Label> labels;
+    private List<Label> labels;
     private List<Notification> reminders;
     private static boolean running = true;
+    private int status=0;
     private Task temp=null;
+
+    public String getUsername() {
+        return this.username;
+    }
 
     public void createTask(Task t) {
         task_list.add(t);
@@ -58,6 +70,7 @@ public final class User extends Application {
             task.showInfo();
             no++;
         }
+        status=0;
     }
 
     public void viewFilteredTasks() {
@@ -69,19 +82,40 @@ public final class User extends Application {
             task.showInfo();
             no++;
         }
+        status=1;
+    }
+
+    private void viewExpiringTasks() {
+        System.out.println(username+"你好,以下是即将到期的任务：");
+        int no=1;
+        for(Task task : this.close_task_list) {
+            System.out.print(no);
+            System.out.print(".");
+            task.showInfo();
+            no++;
+        }
+        status=2;
     }
 
     private void chooseTask(int index) {
         this.temp = task_list.get(index);
     }
 
+    private void chooseFilteredTask(int index) {
+        this.temp = temp_task_list.get(index);
+    }
+
+    private void chooseExpiringTask(int index) {
+        this.temp = close_task_list.get(index);
+    }
+
     public void createCategory(Category category) {
         this.categories.add(category);
     }
 
-    /*public void createLabel(Label label) {
+    public void createLabel(Label label) {
         this.labels.add(label);
-    }*/
+    }
 
     public void createReminder(Notification notification) {
         this.reminders.add(notification);
@@ -90,10 +124,11 @@ public final class User extends Application {
     public void checkNotifications() {
         for (Notification notification : this.reminders) {
             if (notification.isReminded())
-                break;
+                continue;
             Duration diff = Duration.between(LocalDateTime.now(), notification.getRemindTime());
             if (diff.compareTo(notification.getAdvance()) <= 0) {
                 notification.send();
+                close_task_list.add(notification.getTask());
             }
         }
     }
@@ -135,11 +170,15 @@ public final class User extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        /*FXMLLoader fxmlLoader = new FXMLLoader(User.class.getResource("hello-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 400, 400);
-        stage.setTitle("Test!");
+        FXMLLoader fxmlLoader = new FXMLLoader(User.class.getResource("hello-view.fxml"));
+        Scene scene = new Scene(fxmlLoader.load(), 800, 800);
+
+        UserController controller = fxmlLoader.getController();
+        controller.setUser(this);
+
+        stage.setTitle("DDL");
         stage.setScene(scene);
-        stage.show();*/
+        stage.show();
 
         Thread inputThread = new Thread(() -> {
             System.out.println("您好，"+username);
@@ -179,14 +218,34 @@ public final class User extends Application {
                             createReminder(t.getNotification());
                         }
                         case "viewTasks" -> viewTasks();
+                        case "viewFilteredTasks" -> viewFilteredTasks();
+                        case "viewExpiringTasks"  -> viewExpiringTasks();
                         case "chooseTask" -> {
-                            int index = scanner.nextInt() - 1;
-                            chooseTask(index);
+                            switch (status) {
+                                case 0 -> {
+                                    int index = scanner.nextInt() - 1;
+                                    chooseTask(index);
+                                }
+                                case 1 -> {
+                                    int index = scanner.nextInt() - 1;
+                                    chooseFilteredTask(index);
+                                }
+                                case 2 -> {
+                                    int index = scanner.nextInt() - 1;
+                                    chooseExpiringTask(index);
+                                }
+                            }
+                        }
+                        case "setTitle" -> {
+                            input = scanner.nextLine();
+                            parts = input.split(" ");
+                            temp.setTitle(parts[0]);
                         }
                         case "setDueTime" -> {
                             input = scanner.nextLine();
                             parts = input.split(" ");
                             temp.setDueTime(LocalDateTime.parse(parts[0]));
+                            this.close_task_list.remove(temp);
                         }
                         case "setCategory" -> {
                             input = scanner.nextLine();
@@ -216,6 +275,19 @@ public final class User extends Application {
                             }
                         }
                         case "complete" -> temp.complete();
+                        case "deleteTask" -> {
+                            deleted_task_list.add(temp);
+                            task_list.remove(temp);
+                            temp_task_list.remove(temp);
+                            close_task_list.remove(temp);
+                            temp=null;
+                        }
+                        case "setAdvance" -> {
+                            input = scanner.nextLine();
+                            parts = input.split(" ");
+                            temp.setAdvance(Duration.parse(parts[0]));
+                            this.close_task_list.remove(temp);
+                        }
                         case "setUsername" -> {
                             input = scanner.nextLine();
                             parts = input.split(" ");
@@ -246,20 +318,17 @@ public final class User extends Application {
             }
             scanner.close();
         });
-
+        inputThread.setDaemon(true);
         inputThread.start();
 
-        while (running) {
-            try {
-                // 暂停1秒钟
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                System.err.println("线程被中断: " + e.getMessage());
+        Timeline timeline = new Timeline(new KeyFrame(javafx.util.Duration.seconds(1), event -> {
+            if (running) {
+                checkNotifications();
             }
-            checkNotifications();
-        }
-
-        System.out.println("程序结束！");
+        }));
+        timeline.setCycleCount(Animation.INDEFINITE); // 设置为无限循环
+        timeline.play(); // 启动Timeline
     }
+
 
 }

@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Task implements Comparable<Task>{
-    private final String title;
+    private String title;
     private LocalDateTime dueTime;
     private String status;
     private Category category;
@@ -27,9 +27,18 @@ public class Task implements Comparable<Task>{
         this.status="finished";
     }
 
+    public void setTitle(String title) {
+        this.title=title;
+    }
+
     public void setDueTime(LocalDateTime dateTime) {
         this.dueTime=dateTime;
         this.notification.setRemindTime(dateTime,advance);
+    }
+
+    public void setAdvance(Duration duration) {
+        this.advance=duration;
+        this.notification.setRemindTime(dueTime,advance);
     }
 
     public void setCategory(Category category) {
@@ -58,6 +67,10 @@ public class Task implements Comparable<Task>{
 
     public LocalDateTime getDueTime() {
         return dueTime;
+    }
+
+    public Duration getAdvance() {
+        return advance;
     }
 
     public void showInfo() {

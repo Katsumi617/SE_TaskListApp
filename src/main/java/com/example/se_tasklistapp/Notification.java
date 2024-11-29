@@ -16,13 +16,19 @@ public class Notification {
     }
 
     public void send() {
-        System.out.println(this.t.getTitle()+" is due in "+advance.getSeconds()+ " seconds");
+        if (LocalDateTime.now().isBefore(this.remindTime)) {
+            System.out.println(this.t.getTitle()+" is due in "+Duration.between(LocalDateTime.now(), this.remindTime).toString());
+        }
+        else {
+            System.out.println("Error:Due Time is earlier than now.");
+        }
         this.reminded=true;
     }
 
     public void setRemindTime(LocalDateTime remindTime,Duration advance) {
         this.remindTime = remindTime;
         this.advance=advance;
+        this.reminded=false;
     }
 
     public LocalDateTime getRemindTime() {
@@ -35,5 +41,9 @@ public class Notification {
 
     public boolean isReminded() {
         return reminded;
+    }
+
+    public Task getTask() {
+        return t;
     }
 }
