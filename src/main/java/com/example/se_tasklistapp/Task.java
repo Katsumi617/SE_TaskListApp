@@ -4,7 +4,7 @@ import java.time.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Task {
+public class Task implements Comparable<Task>{
     private final String title;
     private LocalDateTime dueTime;
     private String status;
@@ -44,6 +44,22 @@ public class Task {
         return title;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public List<Label> getLabels() {
+        return labels;
+    }
+
+    public LocalDateTime getDueTime() {
+        return dueTime;
+    }
+
     public void showInfo() {
         StringBuilder result= new StringBuilder("Name:" + this.title + " Category:" + this.category.getName() + " Label:");
         for(Label label:this.labels){
@@ -57,5 +73,11 @@ public class Task {
 
     public Notification getNotification() {
         return notification;
+    }
+
+    @Override
+    public int compareTo(Task other) {
+        // 按时间升序排序
+        return this.dueTime.compareTo(other.dueTime);
     }
 }
